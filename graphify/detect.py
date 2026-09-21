@@ -9,6 +9,7 @@ import re
 import shlex
 import stat
 import subprocess
+import sys
 import time
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
@@ -550,12 +551,28 @@ def classify_file(path: Path) -> FileType | None:
     return None
 
 
+# Missing-pypdf is a process-global condition, not per-file, so warn at most
+# once per run — a corpus of many PDFs must not print the same hint N times.
+_pypdf_missing_warned = False
+
+
 def extract_pdf_text(path: Path) -> str:
     """Extract plain text from a PDF file using pypdf."""
     if not _file_within_size_cap(path):
         return ""
     try:
         from pypdf import PdfReader
+    except ImportError:
+        global _pypdf_missing_warned
+        if not _pypdf_missing_warned:
+            _pypdf_missing_warned = True
+            print(
+                "[graphify] WARNING: PDF text extraction skipped: 'pypdf' is not "
+                "installed. Install the pdf extra: uv tool install 'graphifyy[pdf]'",
+                file=sys.stderr,
+            )
+        return ""
+    try:
         reader = PdfReader(str(path))
         pages = []
         for page in reader.pages:
