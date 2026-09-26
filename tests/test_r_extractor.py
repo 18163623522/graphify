@@ -148,6 +148,30 @@ def test_r_namespaced_setrefclass_is_recognised(tmp_path):
     assert ("Acc", "add()") in _edge_labels(result, "method")
 
 
+def test_r6_self_and_private_method_calls_resolve(tmp_path):
+    """R6 methods reach their siblings through `self$` / `private$`, never as a
+    bare name. Those intra-class calls were dropped because walk_calls only
+    handled a bare identifier callee."""
+    source = tmp_path / "counter.R"
+    source.write_text(
+        'Counter <- R6Class("Counter",\n'
+        "  public = list(\n"
+        "    increment = function() self$report(),\n"
+        "    report = function() print(1)\n"
+        "  ),\n"
+        "  private = list(\n"
+        "    log = function() private$fmt(),\n"
+        "    fmt = function() 2\n"
+        "  )\n"
+        ")\n",
+        encoding="utf-8",
+    )
+    result = extract_r(source)
+    calls = _edge_labels(result, "calls")
+    assert ("increment()", "report()") in calls, "self$ call dropped"
+    assert ("log()", "fmt()") in calls, "private$ call dropped"
+
+
 def test_r_missing_parser_reports_install_hint(tmp_path, monkeypatch, capsys):
     source = tmp_path / "missing.R"
     source.write_text('run <- function() 1\n', encoding="utf-8")
