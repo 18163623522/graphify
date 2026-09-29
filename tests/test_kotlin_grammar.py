@@ -706,3 +706,26 @@ def test_kotlin_annotated_explicit_type_property_still_references(tmp_path):
                and e["target"] == volatile
                and e.get("context") == "attribute"
                for e in r["edges"])
+
+
+def test_kotlin_class_property_annotation_without_explicit_type(tmp_path):
+    """A class property with an annotation and an inferred type must not crash
+    with UnboundLocalError ('line' unbound) or drop the file (#3884)."""
+    r = _extract(tmp_path, {
+        "Repro.kt": (
+            "class Repro {\n"
+            "    @Volatile\n"
+            "    var counter = 0\n"
+            "}\n"
+        ),
+    })
+    repro_class = _find(r, "Repro")
+    volatile = _find(r, "Volatile")
+    attr_edges = [
+        e for e in r["edges"]
+        if e["relation"] == "references"
+        and e.get("context") == "attribute"
+        and e["source"] == repro_class
+        and e["target"] == volatile
+    ]
+    assert len(attr_edges) == 1, f"expected Repro->Volatile attribute reference edge, got {attr_edges}"
