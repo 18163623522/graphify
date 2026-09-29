@@ -4,6 +4,7 @@ Full release notes with details on each version: [GitHub Releases](https://githu
 
 ## 0.9.72 (2026-09-29)
 
+- Feature: after a package upgrade, `graphify` refreshes stale installed skills automatically (the `SKILL.md` + references sidecar it manages) so the version-mismatch warning no longer requires a manual `graphify install`. It runs on any non-install CLI command when a skill is stale, backs up local edits to `SKILL.md.bak`, never touches your marker-bounded `CLAUDE.md`/`AGENTS.md`/`GEMINI.md` sections, and can be disabled with `GRAPHIFY_NO_AUTO_REFRESH=1` (#3895, #1805, thanks @bercedev).
 - Fix: `graph.html`'s Node Info panel now shows the real Type/Source/Community for each node instead of "Type: unknown / Source: -" (the panel read field names that did not match the emitted node schema); aggregated community nodes show a member count (#3918, #3914, thanks @hopstreax).
 - Fix: a Kotlin class property that is both annotated and has an inferred type (`@Volatile var x = 0`) no longer crashes extraction with an `UnboundLocalError` that dropped the whole file (#3915, thanks @nothariharan; #3899, thanks @harshaygadekar; #3884).
 - Fix: SQL DDL that appears before a PostgreSQL `DO $$ ... $$` block is now extracted — the block node the parser produces for that span is walked instead of skipped (#3900, thanks @bercedev).
