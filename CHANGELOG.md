@@ -2,6 +2,12 @@
 
 Full release notes with details on each version: [GitHub Releases](https://github.com/Graphify-Labs/graphify/releases)
 
+## 0.9.73 (2026-09-30)
+
+- Feature: enum members are now extracted as nodes with `case_of` edges in four more languages — **Rust** enum variants (#3938), **Zig** enum members (#3940), **C++** `enum`/`enum class` enumerators including nested enums (#3939), and **Scala 3** enum cases plus their methods (#3937) — all thanks @rajatnagda45.
+- Fix: Java calls to inherited methods and `super.method()` now resolve to the declaring ancestor (walking the `inherits` chain, nearest declaration wins), instead of dangling; an unknown/external or ambiguous ancestor fails closed (#3932, thanks @janwaleed09).
+- Fix: semantic extraction warns once when a file exceeds the 20,000-character cap and is truncated, instead of silently dropping the tail (#3923, #3773, thanks @AK-Lmn).
+
 ## 0.9.72 (2026-09-29)
 
 - Feature: after a package upgrade, `graphify` refreshes stale installed skills automatically (the `SKILL.md` + references sidecar it manages) so the version-mismatch warning no longer requires a manual `graphify install`. It runs on any non-install CLI command when a skill is stale, backs up local edits to `SKILL.md.bak`, never touches your marker-bounded `CLAUDE.md`/`AGENTS.md`/`GEMINI.md` sections, and can be disabled with `GRAPHIFY_NO_AUTO_REFRESH=1` (#3895, #1805, thanks @bercedev).
