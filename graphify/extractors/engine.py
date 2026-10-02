@@ -1359,7 +1359,7 @@ def _python_collect_assignment_targets(node, source: bytes, out: set[str]) -> No
 # Languages whose `self`/`this` member calls bind through _self_call_target.
 _SELF_CALL_LANGUAGES = frozenset({
     "tree_sitter_python", "tree_sitter_javascript", "tree_sitter_typescript",
-    "tree_sitter_swift",
+    "tree_sitter_swift", "tree_sitter_ruby",
 })
 
 def _self_call_target(
@@ -6522,7 +6522,7 @@ def _extract_generic(
             callee_name: str | None = None
             is_member_call: bool = False
             is_this_field_call: bool = False
-            # `this.m()` / `self.m()` / `super.m()` (and Swift's implicit
+            # `this.m()` / `self.m()` / `super.m()` (and Swift's/Ruby's implicit
             # self): kept apart from member_receiver, which feeds the
             # receiver-typed resolvers and raw_calls.
             self_receiver: str | None = None
@@ -6538,6 +6538,7 @@ def _extract_generic(
                 # A bare `identifier` has no receiver and no method/argument
                 # fields: the callee is the identifier itself, implicit `self`.
                 callee_name = _read_text(node, source)
+                self_receiver = "self"
             elif config.ts_module == "tree_sitter_swift":
                 # Swift: first child may be simple_identifier or navigation_expression
                 first = node.children[0] if node.children else None
@@ -6867,6 +6868,9 @@ def _extract_generic(
                 if meth is not None:
                     callee_name = _read_text(meth, source)
                 recv = node.child_by_field_name("receiver")
+                if recv is None or recv.type == "self":
+                    # `save(x)` and `self.save` both send to the current object.
+                    self_receiver = "self"
                 if recv is not None:
                     is_member_call = True
                     if recv.type in ("identifier", "constant"):
