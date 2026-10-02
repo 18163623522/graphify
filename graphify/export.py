@@ -352,6 +352,14 @@ def to_json(G: nx.Graph, communities: dict[int, list[str]], output_path: str, *,
         # link verbatim instead, dropping only one whose endpoint no longer
         # exists in G. This also sidesteps any endpoint-order canonicalization
         # undirected storage would otherwise apply when deriving from G.
+        #
+        # The endpoint-existence filter below assumes original_links carry the
+        # SAME ids as G's post-load nodes. That holds because build_from_json
+        # rewrites a legacy node id to its canonical stem (_semantic_id_remap /
+        # _doc_twin_remap) IN PLACE on the shared link dicts the caller then
+        # passes here, so a remapped endpoint already matches node_ids rather
+        # than being silently dropped (regression-tested in test_cli_export.py:
+        # test_cluster_only_preserves_parallel_edges_across_an_id_remap).
         node_ids = {n["id"] for n in data["nodes"]}
         data["links"] = [
             dict(link) for link in original_links
