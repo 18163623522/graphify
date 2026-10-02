@@ -4700,9 +4700,8 @@ def dispatch_command(cmd: str) -> None:
         # failure can therefore be refused here — recoverable by re-running or
         # passing --allow-partial (the good graph is preserved and the manifest
         # is not stamped, so the retry re-extracts).
-        _gattrs = G.graph if hasattr(G, "graph") else {}
-        _dedup_collapsed = int(_gattrs.pop("_dedup_collapsed", 0) or 0)
-        _pruned_nodes = int(_gattrs.pop("_pruned_node_count", 0) or 0)
+        from graphify.build import take_shrink_accounting as _take_shrink_accounting
+        _dedup_collapsed, _pruned_nodes = _take_shrink_accounting(G)
         _force_write = cli_allow_partial or not _extraction_incomplete
         _dedup_shrink_counts: tuple[int, int] | None = None
         if (
@@ -4721,10 +4720,10 @@ def dispatch_command(cmd: str) -> None:
             # pass force=True, which is not this flag (#3774).
             _old_n, _new_n = _dedup_shrink_counts
             print(
-                "[graphify extract] error: dedup reduced the graph from "
-                f"{_old_n} nodes to {_new_n} nodes. Refusing to overwrite "
-                f"{graph_json_path}. Pass --allow-dedup-shrink to write "
-                "the smaller graph.",
+                f"[graphify extract] error: dedup merged {_dedup_collapsed} "
+                f"node(s); writing would shrink the graph from {_old_n} nodes "
+                f"to {_new_n} nodes. Refusing to overwrite {graph_json_path}. "
+                "Pass --allow-dedup-shrink to write the smaller graph.",
                 file=sys.stderr,
             )
             sys.exit(1)
