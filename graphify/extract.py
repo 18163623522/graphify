@@ -7655,22 +7655,36 @@ def extract(
 
     # #3946: a code file that parses CLEANLY (no parse_errors — distinct from
     # the #2551/#2599 case just above, where _syntax_error_files already
-    # explains the loss) but still yields only its own bare file node is
-    # usually a plain data literal the AST extractor has nothing to model
-    # (`const BANK = [...]`), not a code file with no symbols. Nothing
-    # reported this before; the file silently entered the graph as a bare,
+    # explains the loss) but yields NOTHING beyond its own bare file node often
+    # is a plain data literal the AST extractor has nothing to model
+    # (`const BANK = [...]`). It silently entered the graph as a bare,
     # zero-edge node, indistinguishable from a legitimately symbol-free file.
+    #
+    # Scope this to EXACTLY one node (the unconditional file node, engine.py):
+    # - `== 1`, not `<= 1`, so the 0-node domain stays owned by #1666 (zero
+    #   nodes / retry) and is not double-reported with contradictory advice;
+    # - skip `skipped` (#1224/#2879 intentional data declines, like #1666) and
+    #   no-extractor files (#1689 already reports those as unsupported code);
+    # - skip empty/whitespace-only files (an empty `__init__.py`, `py.typed`)
+    #   — there is nothing to model, so the warning would be pure noise.
+    # The message stays neutral ("no symbols"): a def-less script or thin
+    # module is symbol-less *code*, not necessarily data.
     _symbolless_files: list[tuple[str, int]] = []
     for i, _p in enumerate(paths):
         _res = per_file[i] or {}
-        if _res.get("parse_errors") or _res.get("error"):
+        if _res.get("parse_errors") or _res.get("error") or _res.get("skipped"):
             continue
-        if len(_res.get("nodes", [])) <= 1:
-            try:
-                _size = _p.stat().st_size
-            except OSError:
-                _size = 0
-            _symbolless_files.append((os.path.relpath(str(_p), str(root)).replace("\\", "/"), _size))
+        if _get_extractor(_p) is None:
+            continue
+        if len(_res.get("nodes", [])) != 1:
+            continue
+        try:
+            _size = _p.stat().st_size
+            if not _p.read_text(encoding="utf-8", errors="ignore").strip():
+                continue  # empty / whitespace-only: nothing to model, no signal
+        except OSError:
+            _size = 0
+        _symbolless_files.append((os.path.relpath(str(_p), str(root)).replace("\\", "/"), _size))
     if _symbolless_files:
         _total_bytes = sum(size for _, size in _symbolless_files)
         _total_mb = _total_bytes / (1024 * 1024)
@@ -7681,8 +7695,8 @@ def extract(
         )
         print(
             f"  warning: {len(_symbolless_files)} code file(s) yielded no symbols "
-            f"({_total_mb:.2f} MB); they may be data rather than code: "
-            f"{_shown_sl}{_more_sl}",
+            f"({_total_mb:.2f} MB) — a data file, or source this extractor models "
+            f"no symbols for: {_shown_sl}{_more_sl}",
             file=sys.stderr, flush=True,
         )
 
