@@ -1002,11 +1002,12 @@ def test_cluster_only_preserves_parallel_edges_across_an_id_remap(tmp_path):
 
     data = json.loads((out / "graph.json").read_text())
     node_ids = {n["id"] for n in data["nodes"]}
+    # both endpoints remap: claude_alpha -> claude_claude_alpha, beta -> pkg_beta
     assert "claude_claude_alpha" in node_ids, node_ids  # remap fired
     assert "claude_alpha" not in node_ids
     pairs = sorted((l["source"], l["target"], l["relation"]) for l in data["links"])
-    # both parallel edges survive AND are keyed on the remapped id
+    # both parallel edges survive AND track the remapped endpoint ids
     assert pairs == [
-        ("claude_claude_alpha", "beta", "mentions"),
-        ("claude_claude_alpha", "beta", "references"),
+        ("claude_claude_alpha", "pkg_beta", "mentions"),
+        ("claude_claude_alpha", "pkg_beta", "references"),
     ], pairs

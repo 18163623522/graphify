@@ -2712,7 +2712,11 @@ def dispatch_command(cmd: str) -> None:
             if not previous_path.exists():
                 print(f"error: --previous file not found: {previous_path}", file=sys.stderr)
                 sys.exit(1)
-            _prev_raw = json.loads(previous_path.read_text(encoding="utf-8"))
+            try:
+                _prev_raw = json.loads(previous_path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError, UnicodeDecodeError) as e:
+                print(f"error: --previous file is not readable JSON: {previous_path} ({e})", file=sys.stderr)
+                sys.exit(1)
             for _n in _prev_raw.get("nodes", []):
                 if isinstance(_n, dict) and isinstance(_n.get("community"), int) and _n.get("id"):
                     previous_community[_n["id"]] = _n["community"]

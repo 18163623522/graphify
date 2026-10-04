@@ -2278,6 +2278,23 @@ def test_js_this_call_to_inherited_method_keeps_its_edge(tmp_path, ext):
     assert ("svc_server_run", "svc_base_ping") in calls
 
 
+@pytest.mark.parametrize("ext", ["ts", "js"])
+def test_js_super_call_does_not_self_loop_onto_the_overriding_method(tmp_path, ext):
+    """`super.greet()` can never mean the caller's own method. The `extends`
+    chain is unknown at this pass, so it fails closed (no edge) rather than
+    falling back to the file-wide name map and binding to the overriding
+    `greet` as a wrong self-loop."""
+    calls = _single_file_call_pairs(tmp_path, (
+        "class Base {\n"
+        "  greet() { return 0; }\n"
+        "}\n"
+        "class Server extends Base {\n"
+        "  greet() { return super.greet(); }\n"
+        "}\n"
+    ), ext)
+    assert ("svc_server_greet", "svc_server_greet") not in calls
+
+
 def test_swift_self_calls_bind_within_own_class_chain(tmp_path):
     """`self.save()`, a bare `save()` (implicit self) and `super.ping()` must stay
     on Server's chain, not jump to the class the file declares last."""

@@ -1406,7 +1406,11 @@ def _self_call_target(
             if hits:
                 return hits.pop() if len(hits) == 1 else None
         if not walk_bases:
-            return fallback
+            # JS/TS: the `extends` chain is unknown at this pass. An inherited
+            # `this.m()` must keep the plain lookup, but `super.m()` can never
+            # mean the caller's own method, so a file-wide fallback here is just
+            # a wrong self-loop onto the overriding method — fail closed instead.
+            return None if skip_own else fallback
         skip_own = False
         level = list(dict.fromkeys(
             base for c in level for base in class_bases.get(c, ()) if base not in seen
