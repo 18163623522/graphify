@@ -4045,7 +4045,7 @@ _PHP_ROUTING_VERBS = frozenset({"get", "post", "put", "patch", "delete", "option
 # in the same file and INFERRED across files through the case-insensitive fold
 # (#3830).
 #
-# Same policy as _GO_PREDECLARED_FUNCS: language-local, bare calls only
+# Same policy as _LANGUAGE_BUILTIN_GLOBALS: language-local, bare calls only
 # (`$bag->empty()` is a member call and still resolves), and the manual's whole
 # list of call-shaped keywords rather than the subset the pinned grammar emits
 # as calls today (`unset`, `exit`, `list` and `array` get their own node types).
