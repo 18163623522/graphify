@@ -531,8 +531,14 @@ def extract_bash(path: Path) -> dict:
                 cmd_word = text(cmd_name_node).strip()
                 if cmd_word[0:1] in {"'", '"'} and cmd_word[-1:] == cmd_word[0]:
                     cmd_word = cmd_word[1:-1]
+                # A bare variable standing in for an interpreter (`$PYTHON x.py`)
+                # has no path separator; `"$DIR/run.sh" x.py` runs run.sh with
+                # x.py as its ARGUMENT, so the `/` guard keeps us from minting a
+                # spurious invokes edge to the argument on top of the real
+                # `calls` edge the .sh runner path already emits.
                 is_interpreter_variable = (
-                    cmd is None and cmd_word.startswith("$") and "$(" not in cmd_word
+                    cmd is None and cmd_word.startswith("$")
+                    and "$(" not in cmd_word and "/" not in cmd_word
                 )
                 if (is_known_interpreter or is_interpreter_variable) and args:
                     invoked_raw = literal(args[0])

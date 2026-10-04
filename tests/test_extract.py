@@ -3291,6 +3291,25 @@ def test_extract_bash_skips_invokes_for_a_non_interpreter_command(tmp_path):
     assert not any(edge.get("relation") == "invokes" for edge in result["edges"])
 
 
+def test_extract_bash_variable_path_command_does_not_invoke_its_argument(tmp_path):
+    """A variable-built PATH command (`"$DIR/run.sh" stage.py`) runs run.sh with
+    stage.py as its argument; the `/` in the command word means it is not a bare
+    interpreter variable, so no spurious `invokes` edge to the argument is minted
+    (only the real .sh `calls` edge the runner path already emits)."""
+    stage = tmp_path / "stage.py"
+    stage.write_text("print('stage')\n", encoding="utf-8")
+    runner = tmp_path / "run.sh"
+    runner.write_text("#!/bin/bash\necho run\n", encoding="utf-8")
+    script = tmp_path / "caller.sh"
+    script.write_text('#!/bin/bash\nDIR="."\n"$DIR/run.sh" stage.py\n', encoding="utf-8")
+
+    result = extract_bash(script)
+    assert not any(
+        edge.get("relation") == "invokes" and edge.get("target") == _make_id(str(stage.resolve()))
+        for edge in result["edges"]
+    )
+
+
 def test_extract_bash_skips_invokes_for_a_missing_script(tmp_path):
     script = tmp_path / "runner.sh"
     script.write_text("#!/bin/bash\npython3 does_not_exist.py\n", encoding="utf-8")
