@@ -2,6 +2,10 @@
 
 Full release notes with details on each version: [GitHub Releases](https://github.com/Graphify-Labs/graphify/releases)
 
+## 0.9.79 (2026-10-06)
+
+- Fix: incremental `graphify update` and `watch` no longer re-cluster and re-render on every run after an unchanged rebuild. The `schema_version`/`graphify_version` metadata added to `graph.json` in 0.9.78 (#4167) was being counted as a topology change by the watch unchanged-topology check, since the freshly-built candidate graph carries no such metadata; it is now excluded from the comparison.
+
 ## 0.9.78 (2026-10-06)
 
 A determinism and portability batch: node ids no longer leak the checkout path, OS username, or line endings into graph.json, so a clone produces the same graph everywhere. Plus encoding, C#, PowerShell, C++, and watch-reconcile correctness fixes.
