@@ -1267,6 +1267,18 @@ def _canonical_topology_for_compare(graph_data: dict) -> dict:
     canonical = dict(graph_data)
     canonical.pop("built_at_commit", None)
 
+    # The on-disk graph.json carries format/version provenance under "graph"
+    # (schema_version, graphify_version — #4167) that the candidate topology,
+    # built fresh from node_link_data(G), never has. These are metadata, not
+    # topology, so drop them before comparing or every incremental update would
+    # be judged a topology change and needlessly re-cluster/re-render.
+    graph_meta = canonical.get("graph")
+    if isinstance(graph_meta, dict):
+        graph_meta = dict(graph_meta)
+        graph_meta.pop("schema_version", None)
+        graph_meta.pop("graphify_version", None)
+        canonical["graph"] = graph_meta
+
     nodes = canonical.get("nodes")
     if isinstance(nodes, list):
         norm_nodes = []
