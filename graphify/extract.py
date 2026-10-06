@@ -33,6 +33,8 @@ from graphify.extractors.base import (  # noqa: F401
     _LANGUAGE_BUILTIN_GLOBALS,
     _file_stem,
     _make_id,
+    _read_source_bytes,
+    _read_source_text,
     _read_text,
 )
 from graphify.extractors.apex import extract_apex  # noqa: F401
@@ -1700,7 +1702,7 @@ def _extract_python_rationale(path: Path, result: dict) -> None:
         from tree_sitter import Language, Parser
         language = Language(tspython.language())
         parser = Parser(language)
-        source = path.read_bytes()
+        source = _read_source_bytes(path, warn=False)
         tree = parser.parse(source)
         root = tree.root_node
     except Exception:
@@ -2081,7 +2083,7 @@ def extract_js(path: Path) -> dict:
     source_override = None
     if is_ts:
         try:
-            source = path.read_bytes()
+            source = _read_source_bytes(path)
             source_override = _normalize_ts_import_types(source, tsx=suffix == ".tsx")
         except OSError:
             pass
@@ -2119,7 +2121,7 @@ def _rescue_js_dynamic_imports(path: Path, result: dict) -> None:
     """
     try:
         import re as _re
-        src = path.read_text(encoding="utf-8", errors="replace")
+        src = _read_source_text(path, warn=False)
         if not _re.search(r"(?<!\w)import\s*\(", src):  # cheap bail — most files have none
             return
         existing_ids = {n["id"] for n in result.get("nodes", [])}
@@ -2235,7 +2237,7 @@ def _extract_js_rationale(path: Path, result: dict) -> None:
     Mutates result in-place by appending to result['nodes'] and result['edges'].
     """
     try:
-        source_text = path.read_text(encoding="utf-8", errors="replace")
+        source_text = _read_source_text(path, warn=False)
     except Exception:
         return
 
@@ -2474,7 +2476,7 @@ def extract_svelte(path: Path) -> dict:
     dynamic imports.
     """
     try:
-        src = path.read_text(encoding="utf-8", errors="replace")
+        src = _read_source_text(path)
     except OSError as e:
         return {"nodes": [], "edges": [], "error": str(e)}
 
@@ -2583,7 +2585,7 @@ def extract_astro(path: Path) -> dict:
     file flagged every template as a syntax error and dropped frontmatter symbols.
     """
     try:
-        src = path.read_text(encoding="utf-8", errors="replace")
+        src = _read_source_text(path)
     except OSError:
         return {"nodes": [], "edges": []}
     masked = _astro_mask_non_script(src).encode("utf-8")
@@ -2591,7 +2593,7 @@ def extract_astro(path: Path) -> dict:
     result = _extract_generic(path, _TS_CONFIG, source_override=masked)
     try:
         import re as _re
-        src = path.read_text(encoding="utf-8", errors="replace")
+        src = _read_source_text(path, warn=False)
         existing_ids = {n["id"] for n in result.get("nodes", [])}
         file_node_id = _make_id(str(path))
         aliases = _load_tsconfig_aliases(path.parent)
@@ -2652,7 +2654,7 @@ def extract_vue(path: Path) -> dict:
     ``import('…')`` dynamic imports the AST does not edge.
     """
     try:
-        src = path.read_text(encoding="utf-8", errors="replace")
+        src = _read_source_text(path)
     except OSError:
         return {"nodes": [], "edges": []}
 
@@ -2702,7 +2704,7 @@ def _is_spock_file(path: Path, ts_result: dict) -> bool:
     import re as _re
     _SPOCK_FEATURE_RE = _re.compile(r"""^\s*def\s+[\"']""", _re.MULTILINE)
     try:
-        return bool(_SPOCK_FEATURE_RE.search(path.read_text(errors="replace")))
+        return bool(_SPOCK_FEATURE_RE.search(_read_source_text(path, warn=False)))
     except OSError:
         return False
 
@@ -2713,7 +2715,7 @@ def _extract_spock_fallback(path: Path, ts_result: dict) -> dict:
     (which survive reliably) with class and feature-method nodes extracted via regex.
     """
     import re as _re
-    source = path.read_text(errors="replace")
+    source = _read_source_text(path, warn=False)
     str_path = str(path)
     stem = _file_stem(path)
 
@@ -2853,7 +2855,7 @@ def _augment_cpp_string_tests(path: Path, result: dict) -> dict:
     commented Spock ``def "feature"()`` would).
     """
     try:
-        source = path.read_text(errors="replace")
+        source = _read_source_text(path, warn=False)
     except OSError:
         return result
     matches = list(_CPP_STRING_TEST_RE.finditer(source))
@@ -3000,7 +3002,7 @@ def extract_cpp(path: Path) -> dict:
     drops as ERROR nodes (issue #2594), mirroring the Spock fallback for Groovy.
     """
     try:
-        source = path.read_bytes()
+        source = _read_source_bytes(path)
     except OSError:
         # Let _extract_generic report the read failure in its usual shape.
         return _augment_cpp_string_tests(path, _extract_generic(path, _CPP_CONFIG))
@@ -3083,7 +3085,7 @@ def extract_php(path: Path) -> dict:
     """
     result = _extract_generic(path, _PHP_CONFIG)
     try:
-        src = path.read_text(encoding="utf-8", errors="replace")
+        src = _read_source_text(path, warn=False)
         masked, had_script = _php_mask_to_script_blocks(src)
         if not had_script:
             return result
@@ -6366,7 +6368,7 @@ def _xaml_codebehind_symbols(
     # parameter list on method nodes, so we read it from the code-behind source
     # at the method's recorded line.
     try:
-        cb_lines = codebehind.read_text(encoding="utf-8", errors="replace").splitlines()
+        cb_lines = _read_source_text(codebehind, warn=False).splitlines()
     except OSError:
         cb_lines = []
 
@@ -6552,7 +6554,7 @@ def _xaml_communitytoolkit_members(vm_node: dict) -> tuple[dict[str, dict], list
     try:
         # errors="replace" so a non-UTF8 code-behind can't raise UnicodeDecodeError
         # and abort the whole extract_xaml (matches every other reader here).
-        lines = Path(source_file).read_text(encoding="utf-8", errors="replace").splitlines()
+        lines = _read_source_text(Path(source_file), warn=False).splitlines()
     except OSError:
         return {}, []
 
